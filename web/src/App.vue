@@ -1,396 +1,328 @@
 <template>
-  <div class="canonika-app">
-    <!-- Header futurista -->
-    <header class="canonika-header">
-      <div class="header-content">
-        <div class="logo-section">
-          <div class="logo-icon">
-            <div class="logo-hexagon"></div>
-            <div class="logo-pulse"></div>
+  <MasterPage 
+    :serviceConfig="serviceConfig"
+    :hasLogin="false"
+    @view-changed="handleViewChange"
+    @login="handleLogin"
+    @logout="handleLogout"
+  >
+    <!-- Dashboard -->
+    <div v-if="currentView === 'dashboard'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Dashboard Principal</h2>
+        <p class="view-subtitle">Visão geral do sistema Canonika</p>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Métricas -->
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Métricas do Sistema</h3>
+            <button @click="refreshMetrics" class="refresh-btn">
+              <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
-          <div class="logo-text-container">
-            <h1 class="logo-text">CANONIKA</h1>
-            <span class="logo-subtitle">HARBOR</span>
+          <div class="card-content">
+            <div class="metrics-grid">
+              <div class="metric-item">
+                <div class="metric-value">{{ metrics.active_users }}</div>
+                <div class="metric-label">Usuários Ativos</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">{{ metrics.online_services }}/{{ metrics.total_services }}</div>
+                <div class="metric-label">Serviços Online</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">{{ metrics.last_24h_requests }}</div>
+                <div class="metric-label">Requisições (24h)</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">{{ metrics.average_response_time }}ms</div>
+                <div class="metric-label">Tempo Médio</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="header-actions">
-          <div class="system-status">
-            <div class="status-indicator online"></div>
-            <span>ONLINE</span>
+
+        <!-- Status dos Serviços -->
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Status dos Serviços</h3>
           </div>
-          <button @click="logout" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            SAIR
-          </button>
+          <div class="card-content">
+            <div class="service-status" v-for="service in services" :key="service.name">
+              <div class="service-info">
+                <div class="service-icon">
+                  <i :class="getServiceIcon(service.name)"></i>
+                </div>
+                <div class="service-details">
+                  <span class="service-name">{{ service.name }}</span>
+                  <span class="service-description">{{ service.description }}</span>
+                </div>
+              </div>
+              <div class="service-actions">
+                <span class="service-status" :class="service.status">{{ service.statusText }}</span>
+                <button @click="openService(service)" class="canonika-btn canonika-btn-small">
+                  Acessar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="header-glow"></div>
-    </header>
-
-    <div class="canonika-layout">
-      <!-- Sidebar futurista -->
-      <nav class="canonika-sidebar">
-        <div class="sidebar-header">
-          <div class="nav-icon active">
-            <i class="nav-dot"></i>
-            <span>DASHBOARD</span>
-          </div>
-        </div>
-        <ul class="nav-menu">
-          <li class="nav-item" :class="{ active: currentView === 'dashboard' }">
-            <div class="nav-link" @click="setView('dashboard')">
-              <div class="nav-icon">
-                <i class="fas fa-tachometer-alt"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Dashboard</span>
-              </div>
-            </div>
-          </li>
-          <li class="nav-item" :class="{ active: currentView === 'quarter' }">
-            <div class="nav-link" @click="setView('quarter')">
-              <div class="nav-icon">
-                <i class="fas fa-home"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Quarter</span>
-                <span class="service-subtitle">Ponto de Entrada</span>
-              </div>
-            </div>
-          </li>
-          <li class="nav-item" :class="{ active: currentView === 'guardian' }">
-            <div class="nav-link" @click="setView('guardian')">
-              <div class="nav-icon">
-                <i class="fas fa-shield-alt"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Guardian</span>
-                <span class="service-subtitle">Segurança</span>
-              </div>
-            </div>
-          </li>
-          <li class="nav-item" :class="{ active: currentView === 'fisher' }">
-            <div class="nav-link" @click="setView('fisher')">
-              <div class="nav-icon">
-                <i class="fas fa-fish"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Fisher</span>
-                <span class="service-subtitle">Coleta de Dados</span>
-              </div>
-            </div>
-          </li>
-          <li class="nav-item" :class="{ active: currentView === 'ledger' }">
-            <div class="nav-link" @click="setView('ledger')">
-              <div class="nav-icon">
-                <i class="fas fa-book"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Ledger</span>
-                <span class="service-subtitle">Financeiro</span>
-              </div>
-            </div>
-          </li>
-          <li class="nav-item" :class="{ active: currentView === 'users' }">
-            <div class="nav-link" @click="setView('users')">
-              <div class="nav-icon">
-                <i class="fas fa-users"></i>
-              </div>
-              <div class="nav-text">
-                <span class="nav-title">Usuários</span>
-                <span class="service-subtitle">Gestão</span>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </nav>
-
-      <!-- Main Content -->
-      <main class="canonika-main">
-        <!-- Dashboard -->
-        <div v-if="currentView === 'dashboard'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Dashboard Principal</h2>
-            <p class="view-subtitle">Visão geral do sistema Canonika</p>
-          </div>
-
-          <div class="dashboard-grid">
-            <!-- Métricas -->
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Métricas do Sistema</h3>
-                <button @click="refreshMetrics" class="refresh-btn">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="card-content">
-                <div class="metrics-grid">
-                  <div class="metric-item">
-                    <div class="metric-value">{{ metrics.active_users }}</div>
-                    <div class="metric-label">Usuários Ativos</div>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-value">{{ metrics.online_services }}/{{ metrics.total_services }}</div>
-                    <div class="metric-label">Serviços Online</div>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-value">{{ metrics.last_24h_requests }}</div>
-                    <div class="metric-label">Requisições (24h)</div>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-value">{{ metrics.average_response_time }}ms</div>
-                    <div class="metric-label">Tempo Médio</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Status dos Serviços -->
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Status dos Serviços</h3>
-              </div>
-              <div class="card-content">
-                <div class="service-status" v-for="service in services" :key="service.name">
-                  <div class="service-info">
-                    <div class="service-icon">
-                      <i :class="getServiceIcon(service.name)"></i>
-                    </div>
-                    <div class="service-details">
-                      <span class="service-name">{{ service.name }}</span>
-                      <span class="service-description">{{ service.description }}</span>
-                    </div>
-                  </div>
-                  <div class="service-actions">
-                    <span class="service-status" :class="service.status">{{ service.statusText }}</span>
-                    <button @click="openService(service)" class="canonika-btn canonika-btn-small">
-                      Acessar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quarter -->
-        <div v-if="currentView === 'quarter'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Quarter - Ponto de Entrada</h2>
-            <p class="view-subtitle">Sistema de autenticação centralizada</p>
-          </div>
-
-          <div class="service-container">
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Informações do Quarter</h3>
-              </div>
-              <div class="card-content">
-                <div class="service-info-grid">
-                  <div class="info-item">
-                    <span class="info-label">URL:</span>
-                    <span class="info-value">http://localhost</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Porta:</span>
-                    <span class="info-value">80</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value online">Online</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Função:</span>
-                    <span class="info-value">Ponto de entrada e autenticação</span>
-                  </div>
-                </div>
-                <div class="service-actions">
-                  <button @click="openQuarter" class="canonika-btn canonika-btn-primary">
-                    <i class="fas fa-external-link-alt"></i>
-                    Acessar Quarter
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Guardian -->
-        <div v-if="currentView === 'guardian'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Guardian - Sistema de Segurança</h2>
-            <p class="view-subtitle">Gestão de identidades e compliance</p>
-          </div>
-
-          <div class="service-container">
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Informações do Guardian</h3>
-              </div>
-              <div class="card-content">
-                <div class="service-info-grid">
-                  <div class="info-item">
-                    <span class="info-label">URL:</span>
-                    <span class="info-value">http://localhost:3705</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Porta:</span>
-                    <span class="info-value">3705</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value online">Online</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Função:</span>
-                    <span class="info-value">Segurança e compliance</span>
-                  </div>
-                </div>
-                <div class="service-actions">
-                  <button @click="openGuardian" class="canonika-btn canonika-btn-primary">
-                    <i class="fas fa-external-link-alt"></i>
-                    Acessar Guardian
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fisher -->
-        <div v-if="currentView === 'fisher'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Fisher - Coleta de Dados</h2>
-            <p class="view-subtitle">Sistema de coleta e processamento de dados</p>
-          </div>
-
-          <div class="service-container">
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Informações do Fisher</h3>
-              </div>
-              <div class="card-content">
-                <div class="service-info-grid">
-                  <div class="info-item">
-                    <span class="info-label">URL:</span>
-                    <span class="info-value">http://localhost:3702</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Porta:</span>
-                    <span class="info-value">3702</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value offline">Offline</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Função:</span>
-                    <span class="info-value">Coleta e processamento de dados</span>
-                  </div>
-                </div>
-                <div class="service-actions">
-                  <button @click="openFisher" class="canonika-btn canonika-btn-secondary" disabled>
-                    <i class="fas fa-external-link-alt"></i>
-                    Acessar Fisher
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Ledger -->
-        <div v-if="currentView === 'ledger'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Ledger - Gestão Financeira</h2>
-            <p class="view-subtitle">Sistema de gestão financeira e contábil</p>
-          </div>
-
-          <div class="service-container">
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Informações do Ledger</h3>
-              </div>
-              <div class="card-content">
-                <div class="service-info-grid">
-                  <div class="info-item">
-                    <span class="info-label">URL:</span>
-                    <span class="info-value">http://localhost:3703</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Porta:</span>
-                    <span class="info-value">3703</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value offline">Offline</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Função:</span>
-                    <span class="info-value">Gestão financeira</span>
-                  </div>
-                </div>
-                <div class="service-actions">
-                  <button @click="openLedger" class="canonika-btn canonika-btn-secondary" disabled>
-                    <i class="fas fa-external-link-alt"></i>
-                    Acessar Ledger
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Usuários -->
-        <div v-if="currentView === 'users'" class="canonika-view">
-          <div class="view-header">
-            <h2 class="view-title">Gestão de Usuários</h2>
-            <p class="view-subtitle">Administração de usuários e permissões</p>
-          </div>
-
-          <div class="users-container">
-            <div class="canonika-card">
-              <div class="card-header">
-                <h3 class="card-title">Usuários Ativos</h3>
-                <button @click="refreshUsers" class="refresh-btn">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
-              <div class="card-content">
-                <div class="users-list">
-                  <div class="user-item" v-for="user in users" :key="user.id">
-                    <div class="user-info">
-                      <div class="user-avatar">
-                        <i class="fas fa-user"></i>
-                      </div>
-                      <div class="user-details">
-                        <span class="user-name">{{ user.name }}</span>
-                        <span class="user-email">{{ user.email }}</span>
-                        <span class="user-role">{{ user.role }}</span>
-                      </div>
-                    </div>
-                    <div class="user-actions">
-                      <button @click="editUser(user)" class="canonika-btn canonika-btn-small">
-                        Editar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
     </div>
-  </div>
+
+    <!-- Quarter -->
+    <div v-if="currentView === 'quarter'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Quarter - Ponto de Entrada</h2>
+        <p class="view-subtitle">Sistema de autenticação centralizada</p>
+      </div>
+
+      <div class="service-container">
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Informações do Quarter</h3>
+          </div>
+          <div class="card-content">
+            <div class="service-info-grid">
+              <div class="info-item">
+                <span class="info-label">URL:</span>
+                <span class="info-value">{{ config.getServiceUrl('quarter') }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value online">Online</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Função:</span>
+                <span class="info-value">Ponto de entrada centralizado</span>
+              </div>
+            </div>
+            <div class="service-actions">
+              <button @click="openQuarter" class="canonika-btn canonika-btn-primary">
+                <i class="fas fa-external-link-alt"></i>
+                Acessar Quarter
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guardian -->
+    <div v-if="currentView === 'guardian'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Guardian - Segurança</h2>
+        <p class="view-subtitle">Sistema de segurança e monitoramento</p>
+      </div>
+
+      <div class="service-container">
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Informações do Guardian</h3>
+          </div>
+          <div class="card-content">
+            <div class="service-info-grid">
+              <div class="info-item">
+                <span class="info-label">URL:</span>
+                <span class="info-value">{{ config.getServiceUrl('guardian') }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value online">Online</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Função:</span>
+                <span class="info-value">Segurança e monitoramento</span>
+              </div>
+            </div>
+            <div class="service-actions">
+              <button @click="openGuardian" class="canonika-btn canonika-btn-primary">
+                <i class="fas fa-external-link-alt"></i>
+                Acessar Guardian
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fisher -->
+    <div v-if="currentView === 'fisher'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Fisher - Coleta de Dados</h2>
+        <p class="view-subtitle">Sistema de coleta e processamento de dados</p>
+      </div>
+
+      <div class="service-container">
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Informações do Fisher</h3>
+          </div>
+          <div class="card-content">
+            <div class="service-info-grid">
+              <div class="info-item">
+                <span class="info-label">URL:</span>
+                <span class="info-value">{{ config.getServiceUrl('fisher') }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value offline">Offline</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Função:</span>
+                <span class="info-value">Coleta e processamento de dados</span>
+              </div>
+            </div>
+            <div class="service-actions">
+              <button @click="openFisher" class="canonika-btn canonika-btn-primary">
+                <i class="fas fa-external-link-alt"></i>
+                Acessar Fisher
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ledger -->
+    <div v-if="currentView === 'ledger'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Ledger - Financeiro</h2>
+        <p class="view-subtitle">Sistema financeiro e contábil</p>
+      </div>
+
+      <div class="service-container">
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Informações do Ledger</h3>
+          </div>
+          <div class="card-content">
+            <div class="service-info-grid">
+              <div class="info-item">
+                <span class="info-label">URL:</span>
+                <span class="info-value">{{ config.getServiceUrl('ledger') }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value offline">Offline</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Função:</span>
+                <span class="info-value">Sistema financeiro</span>
+              </div>
+            </div>
+            <div class="service-actions">
+              <button @click="openLedger" class="canonika-btn canonika-btn-primary">
+                <i class="fas fa-external-link-alt"></i>
+                Acessar Ledger
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usuários -->
+    <div v-if="currentView === 'users'" class="canonika-view">
+      <div class="view-header">
+        <h2 class="view-title">Gestão de Usuários</h2>
+        <p class="view-subtitle">Administração de usuários do sistema</p>
+      </div>
+
+      <div class="users-container">
+        <div class="canonika-card">
+          <div class="card-header">
+            <h3 class="card-title">Usuários do Sistema</h3>
+            <button @click="refreshUsers" class="refresh-btn">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          <div class="card-content">
+            <div class="users-list">
+              <div class="user-item" v-for="user in users" :key="user.id">
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <div class="user-details">
+                    <span class="user-name">{{ user.name }}</span>
+                    <span class="user-email">{{ user.email }}</span>
+                    <span class="user-role">{{ user.role }}</span>
+                  </div>
+                </div>
+                <div class="user-actions">
+                  <button @click="editUser(user)" class="canonika-btn canonika-btn-small">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </MasterPage>
 </template>
 
 <script>
+import MasterPage from './components/MasterPage.vue'
+import config from './config/env.js'
+
 export default {
   name: 'App',
+  components: {
+    MasterPage
+  },
   data() {
     return {
       currentView: 'dashboard',
+      
+      // Configuração do serviço Harbor
+      serviceConfig: {
+        name: 'HARBOR',
+        description: 'Dashboard Principal do Sistema',
+        iconClass: 'fas fa-anchor',
+        menuItems: [
+          {
+            id: 'dashboard',
+            title: 'Dashboard',
+            icon: 'fas fa-tachometer-alt',
+            subtitle: 'Visão Geral'
+          },
+          {
+            id: 'quarter',
+            title: 'Quarter',
+            icon: 'fas fa-home',
+            subtitle: 'Ponto de Entrada'
+          },
+          {
+            id: 'guardian',
+            title: 'Guardian',
+            icon: 'fas fa-shield-alt',
+            subtitle: 'Segurança'
+          },
+          {
+            id: 'fisher',
+            title: 'Fisher',
+            icon: 'fas fa-fish',
+            subtitle: 'Coleta de Dados'
+          },
+          {
+            id: 'ledger',
+            title: 'Ledger',
+            icon: 'fas fa-book',
+            subtitle: 'Financeiro'
+          },
+          {
+            id: 'users',
+            title: 'Usuários',
+            icon: 'fas fa-users',
+            subtitle: 'Gestão'
+          }
+        ]
+      },
       user: {
         id: 'admin-001',
         name: 'Administrador',
@@ -414,32 +346,28 @@ export default {
         {
           name: 'Quarter',
           description: 'Ponto de entrada',
-          url: 'http://localhost',
-          port: 80,
+          url: config.getServiceUrl('quarter'),
           status: 'online',
           statusText: 'Online'
         },
         {
           name: 'Guardian',
           description: 'Sistema de segurança',
-          url: 'http://localhost:3705',
-          port: 3705,
+          url: config.getServiceUrl('guardian'),
           status: 'online',
           statusText: 'Online'
         },
         {
           name: 'Fisher',
           description: 'Coleta de dados',
-          url: 'http://localhost:3702',
-          port: 3702,
+          url: config.getServiceUrl('fisher'),
           status: 'offline',
           statusText: 'Offline'
         },
         {
           name: 'Ledger',
-          description: 'Gestão financeira',
-          url: 'http://localhost:3703',
-          port: 3703,
+          description: 'Sistema financeiro',
+          url: config.getServiceUrl('ledger'),
           status: 'offline',
           statusText: 'Offline'
         }
@@ -470,13 +398,21 @@ export default {
   },
   
   methods: {
-    setView(view) {
-      this.currentView = view
+    handleViewChange(viewId) {
+      this.currentView = viewId
     },
     
-    logout() {
-      // Implementar logout - redirecionar para Quarter
-      window.location.href = 'http://localhost'
+    handleLogin(user) {
+      this.user = user
+      console.log('Usuário logado:', user)
+    },
+    
+    handleLogout() {
+      this.user = null
+      console.log('Usuário deslogado')
+      // Redirecionar para Quarter usando configuração
+      const quarterUrl = config.getServiceUrl('quarter')
+      window.location.href = quarterUrl
     },
     
     refreshMetrics() {
@@ -491,12 +427,16 @@ export default {
     
     getServiceIcon(serviceName) {
       const icons = {
-        'Quarter': 'fas fa-home',
-        'Guardian': 'fas fa-shield-alt',
-        'Fisher': 'fas fa-fish',
-        'Ledger': 'fas fa-book'
+        'quarter': 'fas fa-home',
+        'harbor': 'fas fa-anchor',
+        'guardian': 'fas fa-shield-alt',
+        'skipper': 'fas fa-compass',
+        'beacon': 'fas fa-broadcast-tower',
+        'fisher': 'fas fa-fish',
+        'tollgate': 'fas fa-door-open',
+        'ledger': 'fas fa-book'
       }
-      return icons[serviceName] || 'fas fa-cog'
+      return icons[serviceName.toLowerCase()] || 'fas fa-cog'
     },
     
     openService(service) {
@@ -506,25 +446,103 @@ export default {
     },
     
     openQuarter() {
-      window.open('http://localhost', '_blank')
+      const quarterUrl = config.getServiceUrl('quarter')
+      window.open(quarterUrl, '_blank')
     },
     
     openGuardian() {
-      window.open('http://localhost:3705', '_blank')
+      const guardianUrl = config.getServiceUrl('guardian')
+      window.open(guardianUrl, '_blank')
     },
     
     openFisher() {
-      window.open('http://localhost:3702', '_blank')
+      const fisherUrl = config.getServiceUrl('fisher')
+      window.open(fisherUrl, '_blank')
     },
     
     openLedger() {
-      window.open('http://localhost:3703', '_blank')
+      const ledgerUrl = config.getServiceUrl('ledger')
+      window.open(ledgerUrl, '_blank')
     },
     
     editUser(user) {
       // Implementar edição de usuário
       console.log('Editando usuário:', user.name)
+    },
+
+    // Métodos para comunicação com outros serviços
+    async checkServiceHealth(serviceName) {
+      const healthUrl = config.buildHealthUrl(serviceName)
+      try {
+        const response = await fetch(healthUrl)
+        return response.ok
+      } catch (error) {
+        console.error(`Erro ao verificar ${serviceName}:`, error)
+        return false
+      }
+    },
+
+    async getGuardianMetrics() {
+      const guardianUrl = config.getServiceUrl('guardian')
+      const metricsUrl = `${guardianUrl}/api/metrics`
+      try {
+        const response = await fetch(metricsUrl)
+        return await response.json()
+      } catch (error) {
+        console.error('Erro ao buscar métricas do Guardian:', error)
+        return {}
+      }
+    },
+
+    async getQuarterUsers() {
+      const quarterUrl = config.getServiceUrl('quarter')
+      const usersUrl = `${quarterUrl}/api/users`
+      try {
+        const response = await fetch(usersUrl)
+        return await response.json()
+      } catch (error) {
+        console.error('Erro ao buscar usuários do Quarter:', error)
+        return []
+      }
+    },
+
+    async refreshAllServices() {
+      const services = ['quarter', 'guardian', 'skipper', 'beacon', 'fisher', 'tollgate', 'ledger']
+      const healthChecks = await Promise.allSettled(
+        services.map(service => this.checkServiceHealth(service))
+      )
+      
+      // Atualizar status dos serviços
+      this.services = this.services.map((service, index) => {
+        const serviceName = service.name.toLowerCase()
+        const isHealthy = healthChecks.find((check, i) => 
+          services[i] === serviceName && check.status === 'fulfilled' && check.value
+        )
+        
+        return {
+          ...service,
+          status: isHealthy ? 'online' : 'offline',
+          statusText: isHealthy ? 'Online' : 'Offline'
+        }
+      })
     }
+  },
+
+  mounted() {
+    // Inicializar configurações
+    console.log('Configurações carregadas:', {
+      quarter: config.getServiceUrl('quarter'),
+      harbor: config.getServiceUrl('harbor'),
+      guardian: config.getServiceUrl('guardian'),
+      skipper: config.getServiceUrl('skipper'),
+      beacon: config.getServiceUrl('beacon'),
+      fisher: config.getServiceUrl('fisher'),
+      tollgate: config.getServiceUrl('tollgate'),
+      ledger: config.getServiceUrl('ledger')
+    })
+    
+    // Atualizar status dos serviços
+    this.refreshAllServices()
   }
 }
 </script>
